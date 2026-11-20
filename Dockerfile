@@ -1,26 +1,34 @@
+# Build stage
 FROM golang:1.24-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-# Cache dependencies
 COPY go.mod go.sum ./
-RUN go mod download -x
+RUN go mod download
 
-# Copy source and build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o /app/bin/api cmd/api/main.go
 
-# Stage 2: Runtime
+ARG TARGETOS
+ARG TARGETARCH
+
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
+    go build -trimpath -ldflags="-s -w" \
+    -o /app/bin/api ./cmd/api
+
+# Runtime stage
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata \
+    && addgroup -S app \
+    && adduser -S app -G app
 
 WORKDIR /app
 
-COPY --from=builder /app/bin/api .
+COPY --from=builder --chown=app:app /app/bin/api ./api
+
+USER app
 
 EXPOSE 8080
 
