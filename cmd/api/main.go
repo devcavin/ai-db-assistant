@@ -18,32 +18,28 @@ import (
 )
 
 func main() {
-	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
 
-	// Initialize logger
 	logger.Init()
 
-	// Load configuration
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Fatal("Invalid configuration", "error", err)
+	}
 
-	// Initialize database
 	db, err := database.NewPostgresDB(cfg.DatabaseURL)
 	if err != nil {
 		logger.Fatal("Failed to connect to database", "error", err)
 	}
 
-	// Run migrations
 	if err := database.RunMigrations(db); err != nil {
 		logger.Fatal("Failed to run migrations", "error", err)
 	}
 
-	// Initialize router
 	r := router.NewRouter(db, cfg)
 
-	// Create server
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
 		Handler:      r,
@@ -52,7 +48,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in a goroutine
 	go func() {
 		logger.Info("Starting server", "port", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -60,7 +55,6 @@ func main() {
 		}
 	}()
 
-	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
