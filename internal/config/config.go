@@ -18,9 +18,9 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		Port:           getEnv("PORT", "8080"),
-		DatabaseURL:    getEnv("DATABASE_URL", "postgresql://neondb_owner:npg_GQAxtdw0BK2i@ep-round-recipe-aexn2xjv-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"),
-		JWTSecret:      getEnv("JWT_SECRET", "your_jwt_secret"),
-		JWTExpiry:      time.Hour * 24, // 24 hours
+		DatabaseURL:    getEnv("DATABASE_URL", ""),
+		JWTSecret:      getEnv("JWT_SECRET", ""),
+		JWTExpiry:      getDurationEnv("JWT_EXPIRY", time.Hour * 24), // 24 hours
 		Environment:    getEnv("ENVIRONMENT", "development"),
 		ProxyServerURL: getEnv("PROXY_SERVER_URL", "http://localhost:8000"),
 	}
@@ -31,4 +31,18 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
+    value, exists := os.LookupEnv(key)
+    if !exists {
+        return defaultValue
+    }
+
+    duration, err := time.ParseDuration(value)
+    if err != nil {
+        return defaultValue
+    }
+
+    return duration
 }
